@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Result</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/index.css') }}">
+</head>
+<body>
+    <main>
+      <div id="container3d"></div>
+    </main>
+    <div class="header">
+      <h1>PITCH PERFECT</h1>
+    </div>
+
+    <div class="second-page" style="padding-top:120px;">
+      <section class="left" style="width:100%;max-width:1080px;margin-inline:auto;">
+        <div class="range-row" style="margin-bottom:8px;">
+          <label for="resultThreshold" class="range-label">Threshold: <span id="resultThresholdValue">{{ '%.2f'|format(threshold|float) }}</span></label>
+          <input id="resultThreshold" type="range" min="0" max="1" step="0.01" value="{{ '%.2f'|format(threshold|float) }}" />
+        </div>
+
+        <div style="overflow:auto;border:1px solid var(--mbz-border);border-radius:12px;background:rgba(255,255,255,0.03);">
+          <table id="resultsTable" style="width:100%;border-collapse:collapse;color:var(--mbz-text);">
+            <thead>
+              <tr style="background:rgba(255,255,255,0.04);">
+                <th style="text-align:left;padding:12px 14px;">slno</th>
+                <th style="text-align:left;padding:12px 14px;">dtc</th>
+                <th style="text-align:left;padding:12px 14px;">desc</th>
+                <th style="text-align:left;padding:12px 14px;">ecu</th>
+                <th style="text-align:left;padding:12px 14px;">similarity</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody">
+              {% for r in rows %}
+              <tr data-sim="{{ '%.2f'|format(r['similarity']) }}" style="border-top:1px solid var(--mbz-border);">
+                <td style="padding:10px 14px;">{{ r['slno'] }}</td>
+                <td style="padding:10px 14px;">{{ r['dtc'] }}</td>
+                <td style="padding:10px 14px; color:var(--mbz-silver);">{{ r['desc'] }}</td>
+                <td style="padding:10px 14px;">{{ r['ecu'] }}</td>
+                <td class="similarity-cell" style="padding:10px 14px;">{{ '%.2f'|format(r['similarity']) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:14px;align-items:center;">
+          <span style="color:var(--mbz-silver);">Part:</span>
+          <strong>{{ name }}</strong>
+          <a href="/" class="cta" style="margin-left:auto;">Back</a>
+        </div>
+      </section>
+    </div>
+    <script>
+      (function(){
+        const slider = document.getElementById('resultThreshold');
+        const label = document.getElementById('resultThresholdValue');
+        const tbody = document.getElementById('resultsBody');
+        function filterRows() {
+          const thr = parseFloat(slider.value);
+          label.textContent = thr.toFixed(2);
+          Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+            const sim = parseFloat(tr.getAttribute('data-sim'));
+            tr.style.display = (sim >= thr) ? '' : 'none';
+          });
+        }
+        if (slider) {
+          slider.addEventListener('input', filterRows);
+          filterRows();
+        }
+      })();
+    </script>
+
+<script>
+    (function(){
+      const slider = document.getElementById('resultThreshold');
+      const label = document.getElementById('resultThresholdValue');
+      const tbody = document.getElementById('resultsBody');
+    
+      function filterRows() {
+        const thr = parseFloat(slider.value);
+        label.textContent = thr.toFixed(2);
+    
+        Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+          const sim = parseFloat(tr.getAttribute('data-sim'));
+          tr.style.display = (sim >= thr) ? '' : 'none';
+    
+          // Apply gradient coloring for similarity cell
+          const cell = tr.querySelector('.similarity-cell');
+          if (cell) {
+            // Clamp between 0 and 1
+            const value = Math.max(0, Math.min(1, sim));
+            // Interpolate red → yellow → green
+            let r, g;
+            if (value < 0.5) {
+              r = 255;
+              g = Math.round(510 * value); // goes from 0 to 255 as value increases to 0.5
+            } else {
+              g = 255;
+              r = Math.round(510 * (1 - value)); // goes from 255 to 0 as value goes to 1
+            }
+            const color = `rgb(${r},${g},0,0.25)`; // light tint with alpha
+            cell.style.backgroundColor = color;
+          }
+        });
+      }
+    
+      if (slider) {
+        slider.addEventListener('input', filterRows);
+        filterRows();
+      }
+    })();
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/index.css') }}">
+</head>
+<body>
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff;flex-direction:column;gap:12px;">
+        <h1>HI</h1>
+        <p>Response from backend: <strong>{{ name }}</strong></p>
+        <a href="/" style="color:#9cf;">Back</a>
+    </div>
+</body>
+</html>
+

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PITCH PERFECT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/index.css') }}">
+</head>
+<body>
+
+  <!-- From Uiverse.io by dexter-st --> 
+<div class="loader-wrapper" id="loader-wrapper">
+  <span class="loader-letter">C</span>
+  <span class="loader-letter">A</span>
+  <span class="loader-letter">R</span>
+  <span class="loader-letter">N</span>
+  <span class="loader-letter">O</span>
+  <span class="loader-letter">S</span>
+  <span class="loader-letter">Y</span>
+  <span class="loader-letter">S</span>
+  <div class="loader"></div>
+</div>
+
+
+
+   <main>
+    <div id="container3d"></div>
+   </main>
+
+   <div class="header" id="header">
+    <h1>PITCH PERFECT</h1>
+   </div>
+
+
+   <div id="content">
+   <div class="landing-page">
+    
+    <div class="tab">
+        <h3 class = "typewriter">CarnoSys</h3>
+        <button id="exploreNow" class="cta">
+            <span>EXPLORE NOW</span>
+            <span class="arrow">↓</span>
+        </button>
+   </div>
+
+   </div>
+
+
+   <div class="second-page" id="secondPage">
+      <section class = "left" style="margin-bottom:24px;display:grid;gap:12px;max-width:920px;margin-inline:auto;">
+        <label for="partSearch" style="color:var(--mbz-silver);">Search parts</label>
+        <div class="searchbar">
+          <input id="partSearch" type="text" placeholder="Type at least 3 characters" autocomplete="off" />
+          <div id="suggestions" class="suggestions" aria-live="polite"></div>
+        </div>
+        <div class="range-row">
+          <label for="threshold" class="range-label">Threshold: <span id="thresholdValue">0.50</span></label>
+          <input id="threshold" type="range" min="0" max="1" step="0.01" value="0.50" />
+        </div>
+        <button id="doSearch" class="cta" >SEARCH</button>
+      </section>
+
+      <section class="right">
+        <img src="../static/assets/car.png">
+      </section>
+     
+   </div>
+  </div>
+   <script type="importmap">
+   {
+     "imports": {
+       "three": "/static/three.js-master/three.js-master/build/three.module.js",
+       "three/addons/": "/static/three.js-master/three.js-master/examples/jsm/"
+     }
+   }
+   </script>
+   <script type="module" src="{{ url_for('static', filename='scripts/index.js') }}"></script>
+</body>
+</html>
