@@ -435,8 +435,8 @@ input[type="range"]::-moz-range-track {
       black 25%
     );
     animation:
-      transform-animation 2s infinite alternate,
-      opacity-animation 4s infinite;
+      transform-animation 2s 1 alternate,
+      opacity-animation 4s 1;
     animation-timing-function: cubic-bezier(0.6, 0.8, 0.5, 1);
   }
   
@@ -465,7 +465,7 @@ input[type="range"]::-moz-range-track {
   .loader-letter {
     display: inline-block;
     opacity: 0;
-    animation: loader-letter-anim 4s infinite linear;
+    animation: loader-letter-anim 4s 1 linear;
     z-index: 2;
   }
   

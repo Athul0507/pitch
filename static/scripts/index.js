@@ -12,6 +12,9 @@ scene.add(modelGroup); // Add to scene immediately
 
 const loader = new OBJLoader();
 
+let modelLoaded = false;
+let animationCycleComplete = false;
+
 loader.load(
     '/static/assets/logo.obj',
     (gltf) => {
@@ -22,22 +25,29 @@ loader.load(
         // Add the object to the modelGroup (so we rotate the group, not the object directly)
         modelGroup.add(object);
 
+        const sharedMaterial = new THREE.MeshStandardMaterial ({
+            color: 0x0a0a0a,
+            metalness: 0.95,
+            roughness: 0.35,
+            envMapIntensity: 0.6
+        })
+
         // Material override for shiny silvery look
         object.traverse((child) => {
             if (child.isMesh) {
-                const mat = new THREE.MeshStandardMaterial({
-                    color: 0x0a0a0a,
-                    metalness: 0.95,
-                    roughness: 0.35,
-                    envMapIntensity: 0.6
-                });
-                if (child.material && child.material.map) mat.map = child.material.map;
-                child.material = mat;
+               
+                child.material = sharedMaterial;
             }
         });
 
         // Fit camera to object inside the group
         fitCameraToObject(camera, modelGroup, 1.1);
+
+        modelLoaded = true;
+
+        if (animationCycleComplete) {
+            hideLoader();
+        }
 
             document.getElementById('loader-wrapper').style.display = 'none';
     },
@@ -50,11 +60,13 @@ loader.load(
 );
 
 // Renderer setup
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "high-performance"
+ });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.85;
+renderer.shadowMap.enabled = false;
 document.getElementById('container3d').appendChild(renderer.domElement);
 
 // Environment reflections (shiny silver)
@@ -446,4 +458,67 @@ function hideLoaderAfterIteration() {
         loaderWrapper.style.display = 'none';
         loaderWrapper.removeEventListener('animationend', handler);
     });
+}
+
+
+function hideLoader() {
+    const loaderWrapper = document.getElementById('loader-wrapper');
+    const landingPage = document.querySelector('.landing-page');
+    const header = document.querySelector('.header');
+    
+    if (loaderWrapper) {
+        // Start fade out transition for loader
+        loaderWrapper.style.opacity = '0';
+        loaderWrapper.style.transform = 'scale(0.95)';
+        
+        // Show landing content with fade in
+        if (landingPage) {
+            landingPage.style.opacity = '1';
+            landingPage.style.transform = 'translateY(0)';
+            landingPage.classList.add('loaded'); // For additional animations
+        }
+        
+        if (header) {
+            header.style.opacity = '1';
+            header.style.transform = 'translateY(0)';
+        }
+        
+        // Start typewriter animation after a slight delay
+        setTimeout(() => {
+            startTypingAnimation();
+        }, 800);
+        
+        // Remove loader from DOM after transition completes
+        setTimeout(() => {
+            loaderWrapper.style.display = 'none';
+        }, 600);
+    }
+}
+
+
+function setupAnimationCycleTracking() {
+    const loaderWrapper = document.getElementById('loader-wrapper');
+    if (!loaderWrapper) return;
+
+    // Force the animation to complete at least one cycle by removing infinite
+    const loaderElement = loaderWrapper.querySelector('.loader');
+    
+    const loaderLetters = loaderWrapper.querySelectorAll('.loader-letter');
+    if (loaderLetters.length > 0) {
+        const lastLetter = loaderLetters[loaderLetters.length - 1];
+        lastLetter.addEventListener('animationend', function handler() {
+            animationCycleComplete = true;
+            if (modelLoaded) {
+                hideLoader();
+            }
+            lastLetter.removeEventListener('animationend', handler);
+        });
+    }
+}
+
+// Call this function when the page loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupAnimationCycleTracking);
+} else {
+    setupAnimationCycleTracking();
 }
