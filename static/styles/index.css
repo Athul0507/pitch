@@ -521,4 +521,9 @@ input[type="range"]::-moz-range-track {
     flex-basis: 100%;
   }
 
+
+
+  .loader.finish-loader::after {
+     animation-iteration-count: 1 !important;
+}
   

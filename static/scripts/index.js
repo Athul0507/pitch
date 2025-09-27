@@ -39,7 +39,7 @@ loader.load(
         // Fit camera to object inside the group
         fitCameraToObject(camera, modelGroup, 1.1);
 
-        document.getElementById('loader-wrapper').style.display = 'none';
+            document.getElementById('loader-wrapper').style.display = 'none';
     },
     (xhr) => {
         console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
@@ -433,3 +433,17 @@ function startTypingAnimation() {
     type();
   }
   
+
+  const loaderWrapper = document.getElementById('loader-wrapper');
+
+// Function to trigger loader hide after animation completes current cycle
+function hideLoaderAfterIteration() {
+    // Remove infinite looping by setting animation-iteration-count to 1
+    loaderWrapper.style.animationIterationCount = '1';
+
+    // Listen for animationend on one of the letters or the loader itself
+    loaderWrapper.addEventListener('animationend', function handler() {
+        loaderWrapper.style.display = 'none';
+        loaderWrapper.removeEventListener('animationend', handler);
+    });
+}
