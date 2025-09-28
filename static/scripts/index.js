@@ -31,6 +31,7 @@ renderer.shadowMap.enabled = false;
 let envMap = null;
 let isLoadingComplete = false;
 
+
 loader.load(
     '/static/assets/logo.obj',
     (gltf) => {
@@ -569,3 +570,15 @@ window.addEventListener('beforeunload', () => {
         envMap.dispose();
     }
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('direct') === 'secondPage') {
+      const secondPage = document.getElementById('secondPage');
+      if (secondPage) {
+        secondPage.scrollIntoView({ behavior: 'instant' });
+        // Clean up the URL
+        window.history.replaceState({}, '', '/');
+      }
+    }
+  });

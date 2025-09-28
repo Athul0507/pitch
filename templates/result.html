@@ -8,52 +8,64 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/index.css') }}">
+    <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.8.0.min.js"></script>
 </head>
 <body>
-    <main>
-      <div id="container3d"></div>
-    </main>
-    <div class="header">
+
+    <div class="secondheader">
       <h1>PITCH PERFECT</h1>
     </div>
 
     <div class="second-page" style="padding-top:120px;">
-      <section class="left" style="width:100%;max-width:1080px;margin-inline:auto;">
-        <div class="range-row" style="margin-bottom:8px;">
-          <label for="resultThreshold" class="range-label">Threshold: <span id="resultThresholdValue">{{ '%.2f'|format(threshold|float) }}</span></label>
-          <input id="resultThreshold" type="range" min="0" max="1" step="0.01" value="{{ '%.2f'|format(threshold|float) }}" />
-        </div>
+      <div class="main">
+        <section class="graphs">
+          {{ bar_div | safe }}
+          {{ bar_script | safe }}
+  
+          {{scatter_div | safe}}
+          {{scatter_script | safe}}
+        </section>
+        <section class="second left" style="width:100%;max-width:1080px;margin-inline:auto;">
+  
+  
+          
+  
+          <div style="overflow:auto;border:1px solid var(--mbz-border);border-radius:12px;background:rgba(255,255,255,0.03);">
+            <table id="resultsTable" style="width:100%;border-collapse:collapse;color:var(--mbz-text);">
+              <thead>
+                <tr style="background:rgba(255,255,255,0.04);">
+                  <th style="text-align:left;padding:12px 14px;">slno</th>
+                  <th style="text-align:left;padding:12px 14px;">dtc</th>
+                  <th style="text-align:left;padding:12px 14px;">desc</th>
+                  <th style="text-align:left;padding:12px 14px;">ecu</th>
+                  <th style="text-align:left;padding:12px 14px;">similarity</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody">
+                {% for r in rows %}
+                <tr data-sim="{{ '%.2f'|format(r['similarity']) }}" style="border-top:1px solid var(--mbz-border);">
+                  <td style="padding:10px 14px;">{{ r['slno'] }}</td>
+                  <td style="padding:10px 14px;">{{ r['dtc'] }}</td>
+                  <td style="padding:10px 14px; color:var(--mbz-silver);">{{ r['desc'] }}</td>
+                  <td style="padding:10px 14px;">{{ r['ecu'] }}</td>
+                  <td class="similarity-cell" style="padding:10px 14px;">{{ '%.2f'|format(r['similarity']) }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:14px;align-items:center;">
+            <span style="color:var(--mbz-silver);">Part:</span>
+            <strong>{{ name }}</strong>
+            <a href="javascript:void(0)" class="cta" onclick="window.history.back()" style="margin-left:auto;">Back</a>
+          </div>
+        </section>
+      </div>
+      
 
-        <div style="overflow:auto;border:1px solid var(--mbz-border);border-radius:12px;background:rgba(255,255,255,0.03);">
-          <table id="resultsTable" style="width:100%;border-collapse:collapse;color:var(--mbz-text);">
-            <thead>
-              <tr style="background:rgba(255,255,255,0.04);">
-                <th style="text-align:left;padding:12px 14px;">slno</th>
-                <th style="text-align:left;padding:12px 14px;">dtc</th>
-                <th style="text-align:left;padding:12px 14px;">desc</th>
-                <th style="text-align:left;padding:12px 14px;">ecu</th>
-                <th style="text-align:left;padding:12px 14px;">similarity</th>
-              </tr>
-            </thead>
-            <tbody id="resultsBody">
-              {% for r in rows %}
-              <tr data-sim="{{ '%.2f'|format(r['similarity']) }}" style="border-top:1px solid var(--mbz-border);">
-                <td style="padding:10px 14px;">{{ r['slno'] }}</td>
-                <td style="padding:10px 14px;">{{ r['dtc'] }}</td>
-                <td style="padding:10px 14px; color:var(--mbz-silver);">{{ r['desc'] }}</td>
-                <td style="padding:10px 14px;">{{ r['ecu'] }}</td>
-                <td class="similarity-cell" style="padding:10px 14px;">{{ '%.2f'|format(r['similarity']) }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        <div style="display:flex;gap:16px;margin-top:14px;align-items:center;">
-          <span style="color:var(--mbz-silver);">Part:</span>
-          <strong>{{ name }}</strong>
-          <a href="/" class="cta" style="margin-left:auto;">Back</a>
-        </div>
-      </section>
+      <div class="third">
+        INSERT THE EXTRA TABLES HERE
+      </div>
     </div>
     <script>
       (function(){
@@ -73,6 +85,13 @@
           filterRows();
         }
       })();
+
+      function goToSecondPage() {
+        function goToSecondPage() {
+  // Navigate to home page with a flag
+  window.location.href = '/?direct=secondPage';
+}
+      }
     </script>
 
 <script>
