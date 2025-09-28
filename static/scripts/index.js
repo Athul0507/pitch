@@ -1,82 +1,116 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-// import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // removed interactivity
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
 let object;
-let modelGroup = new THREE.Object3D(); // 🌐 Group to center pivot and rotate
-scene.add(modelGroup); // Add to scene immediately
+let modelGroup = new THREE.Object3D();
+scene.add(modelGroup);
 
 const loader = new OBJLoader();
-
 let modelLoaded = false;
 let animationCycleComplete = false;
+
+// Performance: Reduce renderer quality during loading
+const renderer = new THREE.WebGLRenderer({ 
+    alpha: true, 
+    antialias: false, // Disable during loading
+    powerPreference: "high-performance"
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.85;
+
+// Performance: Disable shadows during loading
+renderer.shadowMap.enabled = false;
+
+// Performance: Use lower quality environment during loading
+let envMap = null;
+let isLoadingComplete = false;
 
 loader.load(
     '/static/assets/logo.obj',
     (gltf) => {
-       
-       
         object = gltf;
-
-        // Add the object to the modelGroup (so we rotate the group, not the object directly)
         modelGroup.add(object);
 
-        const sharedMaterial = new THREE.MeshStandardMaterial ({
+        // Performance: Apply materials more efficiently
+        const sharedMaterial = new THREE.MeshStandardMaterial({
             color: 0x0a0a0a,
             metalness: 0.95,
             roughness: 0.35,
             envMapIntensity: 0.6
-        })
+        });
 
-        // Material override for shiny silvery look
         object.traverse((child) => {
             if (child.isMesh) {
-               
+                // Reuse shared material instead of creating new ones
                 child.material = sharedMaterial;
+                
+                // Performance: Disable frustum culling during loading animation
+                child.frustumCulled = false;
+                
+                // Performance: Set geometry to static draw usage
+                if (child.geometry) {
+                    child.geometry.computeBoundingBox();
+                    child.geometry.computeBoundingSphere();
+                }
             }
         });
 
-        // Fit camera to object inside the group
         fitCameraToObject(camera, modelGroup, 1.1);
-
         modelLoaded = true;
 
         if (animationCycleComplete) {
+            enableHighQualityRendering();
             hideLoader();
         }
-
-            document.getElementById('loader-wrapper').style.display = 'none';
     },
     (xhr) => {
         console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
     },
     (error) => {
-        console.error('An error happened while loading GLTF:', error);
+        console.error('An error happened while loading OBJ:', error);
     }
 );
 
-// Renderer setup
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "high-performance"
- });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.85;
-renderer.shadowMap.enabled = false;
 document.getElementById('container3d').appendChild(renderer.domElement);
 
-// Environment reflections (shiny silver)
-const pmremGenerator = new THREE.PMREMGenerator(renderer);
-pmremGenerator.compileEquirectangularShader();
-const envScene = new RoomEnvironment();
-const envMap = pmremGenerator.fromScene(envScene, 0.04).texture;
-scene.environment = envMap;
+// Performance: Defer environment setup until after loading
+function setupEnvironment() {
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const envScene = new RoomEnvironment();
+    envMap = pmremGenerator.fromScene(envScene, 0.04).texture;
+    scene.environment = envMap;
+    pmremGenerator.dispose(); // Clean up
+}
 
-// Lights
+// Performance: Enable high quality rendering after loading
+function enableHighQualityRendering() {
+    if (!isLoadingComplete) {
+        isLoadingComplete = true;
+        
+        // Enable antialiasing
+        renderer.antialias = true;
+        
+        // Setup environment
+        setupEnvironment();
+        
+        // Enable frustum culling
+        if (object) {
+            object.traverse((child) => {
+                if (child.isMesh) {
+                    child.frustumCulled = true;
+                }
+            });
+        }
+    }
+}
+
+// Lights setup
 camera.position.z = 5;
 
 const topLight = new THREE.DirectionalLight(0xffffff, 2.0);
@@ -93,20 +127,35 @@ scene.add(rimLight);
 const fillLight = new THREE.HemisphereLight(0xddeeff, 0x080820, 0.4);
 scene.add(fillLight);
 
-let rotationSpeed = 0.005
-// Animate loop - 🌍 Rotate the wrapper group, not the raw object
-function animate() {
-    requestAnimationFrame(animate);
+let rotationSpeed = 0.005;
+
+// Performance: Use requestAnimationFrame more efficiently
+let animationId;
+let lastFrameTime = 0;
+const targetFPS = 30; // Reduce FPS during loading
+const frameInterval = 1000 / targetFPS;
+
+function animate(currentTime = 0) {
+    animationId = requestAnimationFrame(animate);
+    
+    // Performance: Limit frame rate during loading
+    if (!isLoadingComplete && currentTime - lastFrameTime < frameInterval) {
+        return;
+    }
+    lastFrameTime = currentTime;
 
     if (object) {
-        
-        if(Math.abs(modelGroup.rotation.y) > 0.3)
+        if (Math.abs(modelGroup.rotation.y) > 0.3) {
             rotationSpeed = rotationSpeed * -1;
-        modelGroup.rotation.y += rotationSpeed; // 🔁 Rotate around Z-axis like a globe
+        }
+        modelGroup.rotation.y += rotationSpeed;
     }
 
     renderer.render(scene, camera);
 }
+
+// Performance: Start with reduced quality animation
+animate();
 
 // CTA scroll behavior
 const exploreBtn = document.getElementById('exploreNow');
@@ -119,13 +168,29 @@ if (exploreBtn) {
     });
 }
 
-// Fetch and render gallery
+// Performance: Defer gallery loading until needed
 async function loadGallery() {
+    // Only load gallery when it's about to be visible
+    if (document.querySelector('#secondPage')) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    loadGalleryContent();
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { rootMargin: '200px' });
+        
+        observer.observe(document.querySelector('#secondPage'));
+    }
+}
+
+async function loadGalleryContent() {
     try {
         const gallery = document.getElementById('gallery');
         if (!gallery) return;
 
-        // skeletons
+        // Show skeletons
         gallery.innerHTML = '';
         for (let i = 0; i < 6; i++) {
             const sk = document.createElement('article');
@@ -141,7 +206,7 @@ async function loadGallery() {
         items.forEach((item) => {
             const card = document.createElement('article');
             card.className = 'card';
-            card.tabIndex = 0; // keyboard focus
+            card.tabIndex = 0;
             card.innerHTML = `
                 <div class="card-media">
                     <img loading="lazy" src="${item.image}" alt="${item.name}">
@@ -153,6 +218,7 @@ async function loadGallery() {
                     <p class="card-desc">${item.desc}</p>
                 </div>
             `;
+            
             const goDetail = async () => {
                 try {
                     const params = new URLSearchParams({ name: item.name });
@@ -163,6 +229,7 @@ async function loadGallery() {
                     console.error('Detail request failed', err);
                 }
             };
+            
             card.addEventListener('click', goDetail);
             card.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -177,24 +244,20 @@ async function loadGallery() {
     }
 }
 
-// Load gallery on DOM ready
+// Load gallery setup on DOM ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadGallery);
 } else {
     loadGallery();
 }
 
-animate();
-
-// Resize
+// Resize handler
 window.addEventListener('resize', () => {
     camera.aspect = 1;
     camera.updateProjectionMatrix();
 });
 
-let currentRotationSpeed = 0.005;
-
-// Scroll-driven via keyframed path
+// Scroll-driven positioning code (keeping your existing logic)
 const landingSection = document.querySelector('.landing-page');
 const headerEl = document.querySelector('.header');
 const rightSectionEl = document.querySelector('.right');
@@ -204,16 +267,13 @@ function getLandingHeight() {
 }
 
 function getFinalOffsets() {
-    // Dock behind the right section if present
     const gap = 12;
     if (rightSectionEl) {
         const r = rightSectionEl.getBoundingClientRect();
-        // position near the upper-left quadrant of the right card
         const x = Math.max(0, Math.floor(r.left + gap));
         const y = Math.max(0, Math.floor(r.top + gap - 50));
         return { x, y };
     }  
-    // Fallback to header alignment
     const h1 = headerEl ? headerEl.querySelector('h1') : null;
     if (h1) {
         const rect = h1.getBoundingClientRect();
@@ -236,19 +296,14 @@ function cubicBezier(p0, p1, p2, p3, t) {
 function sampleSCurve(t) {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    // Start at center (0,0) relative to container origin
     const startX = 0;
     const startY = 0;
-    // End near right panel area; exact docking handled after landing
     const endX = 0.38 * w;
     const endY = -0.04 * h;
-    // Two control points to create a smoother S-curve
     const c1x = 0.14 * w, c1y = -0.16 * h;
     const c2x = 0.26 * w, c2y = 0.08 * h;
 
-    // Ease-in-out for smoother speed along the curve
     const te = 0.5 - 0.5 * Math.cos(Math.PI * t);
-
     const tx = cubicBezier(startX, c1x, c2x, endX, te);
     const ty = cubicBezier(startY, c1y, c2y, endY, te);
     return { tx, ty };
@@ -258,7 +313,6 @@ function applyPathAt(progress) {
     const clamped = Math.max(0, Math.min(progress, 1));
     const k = sampleSCurve(clamped);
 
-    // Keep constant scale; no shrinking
     if (object) modelGroup.scale.setScalar(1);
 
     if (clamped < 1) {
@@ -267,27 +321,34 @@ function applyPathAt(progress) {
     }
 }
 
+// Performance: Throttle scroll handler
+let scrollTicking = false;
 function onScroll() {
-    const landingHeight = getLandingHeight() - 400;
-    const scrollY = window.scrollY;
+    if (!scrollTicking) {
+        requestAnimationFrame(() => {
+            const landingHeight = getLandingHeight() - 400;
+            const scrollY = window.scrollY;
 
-    if (scrollY < landingHeight) {
-        const progress = scrollY / landingHeight;
-        applyPathAt(progress);
+            if (scrollY < landingHeight) {
+                const progress = scrollY / landingHeight;
+                applyPathAt(progress);
 
-        const container = document.getElementById('container3d');
-        container.style.position = 'absolute';
-        container.style.top = '0';
-        container.style.left = '0';
-    } else {
-        // Beyond landing: track behind the right section
-        const container = document.getElementById('container3d');
-        const { x, y } = getFinalOffsets();
-        applyPathAt(1);
-        container.style.position = 'fixed';
-        container.style.top = '0';
-        container.style.left = '0';
-        container.style.transform = `translate(${x}px, ${y}px)`;
+                const container = document.getElementById('container3d');
+                container.style.position = 'absolute';
+                container.style.top = '0';
+                container.style.left = '0';
+            } else {
+                const container = document.getElementById('container3d');
+                const { x, y } = getFinalOffsets();
+                applyPathAt(1);
+                container.style.position = 'fixed';
+                container.style.top = '0';
+                container.style.left = '0';
+                container.style.transform = `translate(${x}px, ${y}px)`;
+            }
+            scrollTicking = false;
+        });
+        scrollTicking = true;
     }
 }
 
@@ -300,7 +361,6 @@ window.addEventListener('resize', () => {
 
 onScroll();
 
-// Fit camera to object
 function fitCameraToObject(camera, object3D, offset = 1.25) {
     const boundingBox = new THREE.Box3().setFromObject(object3D);
     const center = new THREE.Vector3();
@@ -321,7 +381,7 @@ function fitCameraToObject(camera, object3D, offset = 1.25) {
     camera.lookAt(center);
 }
 
-// ---- Search UX ----
+// Search UX code (keeping your existing search functionality)
 const searchInput = document.getElementById('partSearch');
 const suggestionsEl = document.getElementById('suggestions');
 const thresholdInput = document.getElementById('threshold');
@@ -370,7 +430,6 @@ function updateSliderFill() {
     const v = Math.max(0, Math.min(1, Number(thresholdInput.value)));
     const pct = Math.round(v * 100);
     const green = '#2ecc71';
-    const rest = 'linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06))';
     thresholdInput.style.background = `linear-gradient(90deg, ${green} 0% ${pct}%, rgba(255,255,255,0.12) ${pct}%)`;
 }
 
@@ -379,7 +438,6 @@ if (thresholdInput && thresholdValueEl) {
         thresholdValueEl.textContent = Number(thresholdInput.value).toFixed(2);
         updateSliderFill();
     });
-    // initialize on load
     updateSliderFill();
 }
 
@@ -409,7 +467,6 @@ if (doSearchBtn) {
     doSearchBtn.addEventListener('click', goToSearch);
 }
 
-// Focus search when second page comes into view
 if (secondPageEl && searchInput) {
     const io = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
@@ -426,7 +483,6 @@ if (secondPageEl && searchInput) {
     io.observe(secondPageEl);
 }
 
-
 function startTypingAnimation() {
     const element = document.querySelector('h3.typewriter');
     if (!element) return;
@@ -436,30 +492,14 @@ function startTypingAnimation() {
     let i = 0;
   
     function type() {
-      if (i < text.length) {
-        element.textContent += text.charAt(i);
-        i++;
-        setTimeout(type, 100); // typing delay
-      }
+        if (i < text.length) {
+            element.textContent += text.charAt(i);
+            i++;
+            setTimeout(type, 100);
+        }
     }
     type();
-  }
-  
-
-  const loaderWrapper = document.getElementById('loader-wrapper');
-
-// Function to trigger loader hide after animation completes current cycle
-function hideLoaderAfterIteration() {
-    // Remove infinite looping by setting animation-iteration-count to 1
-    loaderWrapper.style.animationIterationCount = '1';
-
-    // Listen for animationend on one of the letters or the loader itself
-    loaderWrapper.addEventListener('animationend', function handler() {
-        loaderWrapper.style.display = 'none';
-        loaderWrapper.removeEventListener('animationend', handler);
-    });
 }
-
 
 function hideLoader() {
     const loaderWrapper = document.getElementById('loader-wrapper');
@@ -467,15 +507,13 @@ function hideLoader() {
     const header = document.querySelector('.header');
     
     if (loaderWrapper) {
-        // Start fade out transition for loader
         loaderWrapper.style.opacity = '0';
         loaderWrapper.style.transform = 'scale(0.95)';
         
-        // Show landing content with fade in
         if (landingPage) {
             landingPage.style.opacity = '1';
             landingPage.style.transform = 'translateY(0)';
-            landingPage.classList.add('loaded'); // For additional animations
+            landingPage.classList.add('loaded');
         }
         
         if (header) {
@@ -483,26 +521,23 @@ function hideLoader() {
             header.style.transform = 'translateY(0)';
         }
         
-        // Start typewriter animation after a slight delay
         setTimeout(() => {
             startTypingAnimation();
-        }, 800);
+        }, 0);
         
-        // Remove loader from DOM after transition completes
         setTimeout(() => {
             loaderWrapper.style.display = 'none';
+            
+            // Performance: Enable high quality rendering after loader is hidden
+            enableHighQualityRendering();
         }, 600);
     }
 }
-
 
 function setupAnimationCycleTracking() {
     const loaderWrapper = document.getElementById('loader-wrapper');
     if (!loaderWrapper) return;
 
-    // Force the animation to complete at least one cycle by removing infinite
-    const loaderElement = loaderWrapper.querySelector('.loader');
-    
     const loaderLetters = loaderWrapper.querySelectorAll('.loader-letter');
     if (loaderLetters.length > 0) {
         const lastLetter = loaderLetters[loaderLetters.length - 1];
@@ -516,9 +551,21 @@ function setupAnimationCycleTracking() {
     }
 }
 
-// Call this function when the page loads
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupAnimationCycleTracking);
 } else {
     setupAnimationCycleTracking();
 }
+
+// Performance: Clean up on page unload
+window.addEventListener('beforeunload', () => {
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+    }
+    if (renderer) {
+        renderer.dispose();
+    }
+    if (envMap) {
+        envMap.dispose();
+    }
+});
